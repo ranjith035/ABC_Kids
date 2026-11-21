@@ -17,7 +17,7 @@ Progress (stars) is saved in the browser automatically.
 
 | Mode | What happens |
 |---|---|
-| **Learn** | Tap any letter, see a giant letter + picture + word. Tap the picture, the letter, or **Say it** to hear it. Swipe or use ◀ ▶ to move through the words. Tap any picture in the bottom strip to jump straight to it. |
+| **Learn** | Tap any letter, see a giant letter + picture + word. Words automatically advance every 5 seconds with a visual countdown timer so toddlers can learn hands-free. Tap the picture, the letter, or **Say it** to hear it. Tap **5s Auto** (or press **P**) to pause or resume anytime. Swipe or use ◀ ▶ to move manually. |
 | **Word Match** | The game shows a big letter and three pictures. Pick the picture that starts with that letter. |
 | **Letter Hunt** | The game says a word and shows its picture. Pick the letter it starts with. |
 | **Surprise Me** | Jumps to a random letter. |
@@ -35,6 +35,7 @@ Tap anything.
 | Enter | Select the focused item |
 | ← → | Previous / next word (Learn) |
 | ↑ ↓ | Previous / next letter (Learn) |
+| P / A | Pause or resume 5s auto-advance (Learn) |
 | 1 2 3 | Pick an answer |
 | Space | Repeat the word or question |
 | Esc / Backspace | Back to the letter grid |
