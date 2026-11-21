@@ -1,0 +1,11 @@
+# Cloudflare Workers / Pages configuration
+# The game is a static site: public/index.html (+ no build step needed).
+name = "abc-kids"
+compatibility_date = "2026-11-21"
+
+# Used by `wrangler deploy` (Workers static assets).
+# For Cloudflare Pages (Git integration), set:
+#   Build command:        (leave empty)
+#   Build output directory: public
+[assets]
+directory = "./public"

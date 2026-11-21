@@ -2,13 +2,14 @@
 
 A light, offline alphabet game for a 4-year-old. One HTML file — no install, no internet, no ads, no accounts.
 
-**File:** `abc-adventure.html` (~45 KB)
+**Play locally:** open `public/index.html` (or double-click it).
+**Live site:** deploy the `public/` folder (see [Deploy](#deploy)).
 
 ## Play it
 
-1. Double-click `abc-adventure.html` (opens in Chrome or Edge).
+1. Open `public/index.html` in Chrome or Edge.
 2. Press **F** or tap **⛶** for fullscreen.
-3. On a TV: connect HDMI, open the file on the big screen, press **F**.
+3. On a TV: open the deployed URL in the TV browser, or connect HDMI from a laptop and press **F**.
 
 Progress (stars) is saved in the browser automatically.
 
@@ -23,13 +24,37 @@ Progress (stars) is saved in the browser automatically.
 
 ## Controls
 
-- **Tap / click** — everything works by touch or mouse.
-- **← →** — previous / next word (Learn mode).
-- **1 2 3** — pick an answer (Word Match / Letter Hunt).
-- **Space** — repeat the word or question.
-- **Esc** — back to the letter grid.
-- **F** — fullscreen.
-- **Type any letter** on the home screen to jump to it.
+### Touch / mouse
+Tap anything.
+
+### Keyboard
+
+| Key | Action |
+|---|---|
+| Arrows | Move the yellow focus ring (home / quizzes) |
+| Enter | Select the focused item |
+| ← → | Previous / next word (Learn) |
+| ↑ ↓ | Previous / next letter (Learn) |
+| 1 2 3 | Pick an answer |
+| Space | Repeat the word or question |
+| Esc / Backspace | Back to the letter grid |
+| F | Fullscreen |
+| Any letter | Jump to that letter from the home screen |
+
+### TV remote (Sony Bravia, Android TV, Fire TV, etc.)
+
+The game listens for the standard D-pad key codes that TV browsers send:
+
+| Remote button | Action |
+|---|---|
+| ◀ ▲ ▶ ▼ | Move the yellow focus ring |
+| OK / Enter | Select the focused letter, mode or answer |
+| Back | Return to the letter grid |
+| Play/Pause (if it sends Space) | Repeat the word |
+
+In **Learn**, ◀ ▶ changes the word, ▲ ▼ changes the letter, and **OK** says the word again. In the quizzes, the D-pad moves between the three answers and **OK** picks one.
+
+> Note: the exact buttons depend on the TV browser. Sony's Android TV browser (or Chrome/Puffin installed on the TV) sends normal arrow/Enter key events, so it works. Very old Opera-based TV browsers may not support speech or modern CSS — in that case, cast/mirror from a laptop or use a Fire Stick/Chromecast with a browser.
 
 ## Learning design
 
@@ -46,7 +71,7 @@ Progress (stars) is saved in the browser automatically.
 
 ### Add or change words
 
-Open `abc-adventure.html` in Notepad/VS Code and find:
+Open `public/index.html` and find:
 
 ```js
 const LETTERS = [
@@ -56,6 +81,34 @@ const LETTERS = [
 ```
 
 Each word is `['Word', 'emoji']`. Add as many as you like — the word strip and counter update automatically. Use a single emoji per word.
+
+## Deploy
+
+The site is plain static files in `public/`, so there is no build step.
+
+### Cloudflare Pages (Git integration)
+
+In the Pages project settings use:
+
+- **Framework preset:** None
+- **Build command:** *(leave empty)*
+- **Build output directory:** `public`
+
+That is what fixes `Could not detect a directory containing static files`.
+
+### Cloudflare Workers (Wrangler)
+
+`wrangler.toml` is already configured with `[assets] directory = "./public"`:
+
+```bash
+npx wrangler deploy
+```
+
+If your Worker has a different name, change `name = "abc-kids"` in `wrangler.toml` first.
+
+### Any other host
+
+Upload the contents of `public/` (GitHub Pages, Netlify, Vercel, S3, a USB stick — all work).
 
 ## Ideas for v2
 

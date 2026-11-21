@@ -275,6 +275,9 @@
     opacity:0;visibility:hidden;
   }
   #toast.show{transform:translate(-50%,0);opacity:1;visibility:visible}
+
+  /* TV remote / keyboard focus ring */
+  .nav-focus{outline:6px solid #f59e0b;outline-offset:4px;position:relative;z-index:5}
 </style>
 </head>
 <body>
@@ -449,6 +452,9 @@ const state = {
   lastHuntLetter: null
 };
 
+/* TV-remote / keyboard focus tracking */
+const NAV = { el: null };
+
 /* ---------- sound (Web Audio, no files) ---------- */
 let actx = null;
 function audio(){
@@ -546,10 +552,63 @@ function updateStarUI(){
   });
 }
 
+/* ---------- TV remote / keyboard navigation ---------- */
+function clearNav(){
+  if (NAV.el){ NAV.el.classList.remove('nav-focus'); NAV.el = null; }
+}
+function setNav(el){
+  if (!el || NAV.el === el) return;
+  clearNav();
+  NAV.el = el;
+  el.classList.add('nav-focus');
+  try { el.scrollIntoView({ block:'nearest', inline:'nearest' }); } catch(e){}
+}
+function navItems(){
+  const scr = $('.screen.active');
+  if (!scr) return [];
+  return $$('button', scr).filter(el => el.offsetParent !== null);
+}
+function moveNav(dir){
+  const items = navItems();
+  if (!items.length) return;
+  if (!NAV.el || !items.includes(NAV.el)){ setNav(items[0]); return; }
+  const cr = NAV.el.getBoundingClientRect();
+  const cx = cr.left + cr.width/2, cy = cr.top + cr.height/2;
+  let best = null, bestScore = Infinity;
+  for (const el of items){
+    if (el === NAV.el) continue;
+    const r = el.getBoundingClientRect();
+    const dx = (r.left + r.width/2) - cx;
+    const dy = (r.top + r.height/2) - cy;
+    let primary, secondary;
+    if (dir === 'left'){ if (dx >= -2) continue; primary = -dx; secondary = Math.abs(dy); }
+    else if (dir === 'right'){ if (dx <= 2) continue; primary = dx; secondary = Math.abs(dy); }
+    else if (dir === 'up'){ if (dy >= -2) continue; primary = -dy; secondary = Math.abs(dx); }
+    else { if (dy <= 2) continue; primary = dy; secondary = Math.abs(dx); }
+    const score = primary + secondary * 2;
+    if (score < bestScore){ bestScore = score; best = el; }
+  }
+  if (best) setNav(best);
+}
+function keyName(e){
+  const k = e.key;
+  if (k && k !== 'Unidentified' && k !== 'Dead') return k;
+  return ({
+    37:'ArrowLeft', 38:'ArrowUp', 39:'ArrowRight', 40:'ArrowDown',
+    13:'Enter', 32:' ', 8:'Backspace', 27:'Escape',
+    166:'Back', 461:'Back', 10009:'Back'
+  })[e.keyCode] || '';
+}
+
 /* ---------- screens ---------- */
 function show(name){
   state.screen = name;
   $$('.screen').forEach(s => s.classList.toggle('active', s.id === name));
+  clearNav();
+  if (name === 'home'){
+    const first = $('.tile');
+    if (first) setNav(first);
+  }
   if (name !== 'quiz' && name !== 'hunt') clearTimer();
 }
 function goHome(){
@@ -628,6 +687,12 @@ function stepWord(dir){
   sfx.next();
   renderLearn(true);
 }
+function stepLetter(dir){
+  state.learn.li = (state.learn.li + dir + LETTERS.length) % LETTERS.length;
+  state.learn.wi = 0;
+  sfx.next();
+  renderLearn(true);
+}
 function sayCurrentWord(){
   const L = LETTERS[state.learn.li];
   const [word] = L.words[state.learn.wi];
@@ -691,6 +756,7 @@ function nextQuiz(){
   `).join('');
 
   speak(`Which one starts with ${L.l}?`, { rate:.8 });
+  setNav($('#quizOptions .opt'));
 }
 function answerQuiz(btn){
   const q = state.quiz;
@@ -749,6 +815,7 @@ function nextHunt(){
   `).join('');
 
   speak(`${word}. Which letter does ${word} start with?`, { rate:.8 });
+  setNav($('#huntOptions .letter-opt'));
 }
 function answerHunt(btn){
   const h = state.hunt;
@@ -943,49 +1010,99 @@ stage.addEventListener('touchend', e => {
   swipeX = null;
 }, { passive:true });
 
-/* keyboard */
+/* keyboard + TV remote (D-pad) */
 addEventListener('keydown', e => {
   if (e.repeat) return;
-  if (e.key === 'Escape'){ goHome(); return; }
-  if (e.key === 'f' || e.key === 'F'){ $('#fsBtn').click(); return; }
+  const k = keyName(e);
+
+  // Back / Escape -> letter grid
+  if (k === 'Escape' || k === 'Backspace' || k === 'Back' ||
+      k === 'BrowserBack' || k === 'GoBack'){
+    e.preventDefault(); goHome(); return;
+  }
+  if (k === 'f' || k === 'F'){ $('#fsBtn').click(); return; }
 
   if (state.screen === 'home'){
-    const ch = e.key.toUpperCase();
-    if (/^[A-Z]$/.test(ch)){
-      const i = LETTERS.findIndex(L => L.l === ch);
+    // typing a letter still works with a keyboard
+    if (k.length === 1 && /^[a-zA-Z]$/.test(k)){
+      const i = LETTERS.findIndex(L => L.l === k.toUpperCase());
       if (i >= 0){ audio(); openLearn(i); }
+      return;
+    }
+    if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'ArrowUp' || k === 'ArrowDown'){
+      e.preventDefault(); audio();
+      moveNav(k.replace('Arrow','').toLowerCase());
+      return;
+    }
+    if (k === 'Enter' || k === ' '){
+      e.preventDefault();
+      if (!NAV.el){ setNav($('.tile')); return; }
+      audio(); NAV.el.click();
+      return;
     }
     return;
   }
 
   if (state.screen === 'learn'){
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown'){ e.preventDefault(); audio(); stepWord(1); }
-    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp'){ e.preventDefault(); audio(); stepWord(-1); }
-    else if (e.key === ' '){ e.preventDefault(); audio(); sayCurrentWord(); }
+    if (k === 'ArrowRight'){ e.preventDefault(); audio(); stepWord(1); }
+    else if (k === 'ArrowLeft'){ e.preventDefault(); audio(); stepWord(-1); }
+    else if (k === 'ArrowDown'){ e.preventDefault(); audio(); stepLetter(1); }
+    else if (k === 'ArrowUp'){ e.preventDefault(); audio(); stepLetter(-1); }
+    else if (k === ' ' || k === 'Enter'){ e.preventDefault(); audio(); sayCurrentWord(); }
     return;
   }
 
   if (state.screen === 'quiz'){
-    if (['1','2','3'].includes(e.key)){
-      const btn = $$('#quizOptions .opt')[+e.key - 1];
+    if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'ArrowUp' || k === 'ArrowDown'){
+      e.preventDefault(); audio();
+      if (!NAV.el) setNav($('#quizOptions .opt'));
+      moveNav(k.replace('Arrow','').toLowerCase());
+      return;
+    }
+    if (k === 'Enter'){
+      e.preventDefault();
+      if (!NAV.el){ setNav($('#quizOptions .opt')); return; }
+      audio(); NAV.el.click();
+      return;
+    }
+    if (k === ' '){ e.preventDefault(); $('#quizRepeat').click(); return; }
+    if (['1','2','3'].includes(k)){
+      const btn = $$('#quizOptions .opt')[+k - 1];
       if (btn){ audio(); answerQuiz(btn); }
-    } else if (e.key === ' '){ e.preventDefault(); $('#quizRepeat').click(); }
+    }
     return;
   }
 
   if (state.screen === 'hunt'){
-    if (['1','2','3'].includes(e.key)){
-      const btn = $$('#huntOptions .letter-opt')[+e.key - 1];
+    if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'ArrowUp' || k === 'ArrowDown'){
+      e.preventDefault(); audio();
+      if (!NAV.el) setNav($('#huntOptions .letter-opt'));
+      moveNav(k.replace('Arrow','').toLowerCase());
+      return;
+    }
+    if (k === 'Enter'){
+      e.preventDefault();
+      if (!NAV.el){ setNav($('#huntOptions .letter-opt')); return; }
+      audio(); NAV.el.click();
+      return;
+    }
+    if (k === ' '){ e.preventDefault(); $('#huntRepeat').click(); return; }
+    if (['1','2','3'].includes(k)){
+      const btn = $$('#huntOptions .letter-opt')[+k - 1];
       if (btn){ audio(); answerHunt(btn); }
-    } else if (e.key === ' '){ e.preventDefault(); $('#huntRepeat').click(); }
+    }
   }
 });
+
+// a mouse/touch tap drops the TV focus ring
+addEventListener('pointerdown', () => clearNav(), { passive:true });
 
 /* unlock audio on first interaction (mobile / some browsers) */
 addEventListener('pointerdown', () => audio(), { once:true });
 
 /* ---------- boot ---------- */
 renderHome();
+setNav($('.tile'));
 </script>
 </body>
 </html>
